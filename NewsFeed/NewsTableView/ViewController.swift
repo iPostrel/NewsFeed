@@ -104,7 +104,7 @@ extension ViewController: UITableViewDataSource, UITableViewDelegate {
         newsWebViewController.newsTitle = newsArticle.title
         present(newsWebViewController, animated: true, completion: nil)
     }
-    // Updating last сell View
+    // Updating last сell View and getNextNews
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         if indexPath.row >= (newsArray.count - 5) {
             getNextNews()

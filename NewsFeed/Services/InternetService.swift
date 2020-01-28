@@ -35,8 +35,6 @@ class InternetService {
         return ret
     }
     
-    
-    static let jsonCache = NSCache<NSString, AnyObject>()
     static let urlNews: String = "https://newsapi.org/v2/everything"
     
     // Request
@@ -47,7 +45,8 @@ class InternetService {
           "q": "android",
           "from": "2019-04-00",
           "sortBy": "publishedAt",
-          "apiKey": "26eddb253e7840f988aec61f2ece2907"
+          "apiKey": "26eddb253e7840f988aec61f2ece2907",
+          "language" : "ru"
         ]
         request(urlNews, method: .get, parameters: paramaters).validate().responseJSON { responseJSON in
             switch responseJSON.result {
@@ -55,7 +54,7 @@ class InternetService {
                 guard let response = value as? NSDictionary, let articlesObject = response.object(forKey: "articles") else { return }
                 guard let articles = Article.getArray(from: articlesObject as Any) else { return }
                 DispatchQueue.main.async {
-                    jsonCache.setObject(articles as AnyObject, forKey: (urlNews + "=\(page)") as NSString)
+                    storeJSON(urlString: (urlNews + "=\(page)"), article: articlesObject)
                     completion(articles)
                 }
             case .failure(let error):
@@ -69,14 +68,40 @@ class InternetService {
     
     // Cache JSON
     static func getJSON(withPage page: Int, withSize pageSize: Int,  completion: @escaping (_ articles: [Article]?) -> ()) {
-        if let article = jsonCache.object(forKey: (urlNews + "=\(page)") as NSString) as? [Article] {
-            completion(article)
-        } else {
-            if InternetService.connection() {
-                downloadJSON(withPage: page, withSize: pageSize, completion: completion)
-            } else {
-                completion(nil)
+        let url = urlNews + "=\(page)"
+        if let dict = UserDefaults.standard.object(forKey: "JSONCache") as? [String:String] {
+            if let path = dict[url] {
+                if let data = try? Data(contentsOf: URL(fileURLWithPath: path)) {
+                    let article = dataToStringArray(data: data)
+                    completion(article)
+                    return
+                }
             }
         }
+        if InternetService.connection() {
+            downloadJSON(withPage: page, withSize: pageSize, completion: completion)
+        }
+    }
+    
+    // Image Cache
+    static func storeJSON(urlString: String, article: Any) {
+        let path = NSTemporaryDirectory().appending(UUID().uuidString)
+        let url = URL(fileURLWithPath: path)
+        
+        let data = stringArrayToData(stringArray: article)
+        try? data?.write(to: url)
+        
+        var dict = UserDefaults.standard.object(forKey: "JSONCache") as? [String:String]
+        if dict == nil {
+            dict = [String:String]()
+        }
+        dict![urlString] = path
+        UserDefaults.standard.set(dict, forKey: "JSONCache")
+    }
+    static func stringArrayToData(stringArray: Any) -> Data? {
+      return try? JSONSerialization.data(withJSONObject: stringArray, options: [])
+    }
+    static func dataToStringArray(data: Data) -> [Article]? {
+      return (try? JSONSerialization.jsonObject(with: data, options: [])) as? [Article]
     }
 }

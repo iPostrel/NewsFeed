@@ -10,9 +10,8 @@ import UIKit
 import Alamofire
 
 class ImageService: UIImageView {
-    static let imageCache = NSCache<NSString, UIImage>()
     
-    // Request
+    // Image Request
     static func downloadImage(withURL url: String, completion: @escaping (_ image: UIImage?) -> ()) {
         request(url).validate().downloadProgress { progress in
 //            print("totalUnitCount:\n", progress.totalUnitCount)
@@ -26,22 +25,41 @@ class ImageService: UIImageView {
                 let image = UIImage(data: data)
                 else { return }
             DispatchQueue.main.async {
-                imageCache.setObject(image, forKey: url as NSString)
+                storeImage(urlString: url, img: image)
                 completion(image)
             }
         }
     }
     
-    // Cache
+    // Image Get
     static func getImage(withURL url: String, completion: @escaping (_ image: UIImage?) -> ()) {
-        if let image = imageCache.object(forKey: url as NSString) {
-            completion(image)
-        } else {
-            if InternetService.connection() {
-                downloadImage(withURL: url, completion: completion)
-            } else {
-                completion(nil)
+        if let dict = UserDefaults.standard.object(forKey: "ImageCache") as? [String:String] {
+            if let path = dict[url] {
+                if let data = try? Data(contentsOf: URL(fileURLWithPath: path)) {
+                    let img = UIImage(data: data)
+                    completion(img)
+                    return
+                }
             }
         }
+        if InternetService.connection() {
+            downloadImage(withURL: url, completion: completion)
+        }
+    }
+    
+    // Image Cache
+    static func storeImage(urlString: String, img: UIImage) {
+        let path = NSTemporaryDirectory().appending(UUID().uuidString)
+        let url = URL(fileURLWithPath: path)
+        
+        let data = img.jpegData(compressionQuality: 0.5)
+        try? data?.write(to: url)
+        
+        var dict = UserDefaults.standard.object(forKey: "ImageCache") as? [String:String]
+        if dict == nil {
+            dict = [String:String]()
+        }
+        dict![urlString] = path
+        UserDefaults.standard.set(dict, forKey: "ImageCache")
     }
 }

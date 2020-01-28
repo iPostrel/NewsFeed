@@ -93,16 +93,18 @@ extension ViewController: UITableViewDataSource, UITableViewDelegate {
     }
     // Present WebView
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        if !InternetService.connection() && newsArray.count == 0  {
+        if InternetService.connection() && newsArray.count + 1 == 1  {
             getNews()
             return
-        } else if !InternetService.connection() && indexPath.row == newsArray.count { return }
-        
-        let newsArticle = newsArray[indexPath.row]
-        let newsWebViewController = NewsWebViewController()
-        newsWebViewController.newsURL = newsArticle.url
-        newsWebViewController.newsTitle = newsArticle.title
-        present(newsWebViewController, animated: true, completion: nil)
+        } else if !InternetService.connection() && indexPath.row == newsArray.count || !InternetService.connection() {
+            return
+        } else if indexPath.row < newsArray.count {
+            let newsArticle = newsArray[indexPath.row]
+            let newsWebViewController = NewsWebViewController()
+            newsWebViewController.newsURL = newsArticle.url
+            newsWebViewController.newsTitle = newsArticle.title
+            present(newsWebViewController, animated: true, completion: nil)
+        }
     }
     // Updating last сell View and getNextNews
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
